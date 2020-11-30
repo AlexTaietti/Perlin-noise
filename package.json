@@ -1,0 +1,22 @@
+{
+  "name": "Tiny-boilerplate",
+  "version": "1.0.0",
+  "description": "Super simple and quick boilerplate for frontend development",
+  "scripts": {
+    "dev": "gulp serve",
+    "compile:style": "gulp style",
+    "compile:script": "gulp script",
+    "compile:all": "gulp style && gulp script && echo \"style and script compiled succesfully\""
+  },
+  "author": "Alex Taietti",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/core": "^7.11.1",
+    "@babel/preset-env": "^7.11.0",
+    "browser-sync": "^2.26.12",
+    "gulp": "^4.0.2",
+    "gulp-autoprefixer": "^7.0.1",
+    "gulp-babel": "^8.0.0",
+    "gulp-sass": "^4.1.0"
+  }
+}
