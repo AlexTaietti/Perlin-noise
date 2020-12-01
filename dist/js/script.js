@@ -1,10 +1,4 @@
 (function (universe) {
-  //set-up
-  const canvas = document.getElementsByTagName('canvas')[0];
-  const $ = canvas.getContext('2d');
-  const w = canvas.width = window.innerWidth;
-  const h = canvas.height = window.innerHeight;
-
   function perlinSmooth(t) {
     return t * t * t * (10 + (6 * t - 15) * t);
   }
@@ -109,78 +103,140 @@
     };
   }();
 
-  const particles = function (w, h) {
+  const particles = function () {
     //private variables
-    let _particleArrayPointer = 0;
-
     let _x, _y;
 
-    const _particlesNumber = 2500;
-    const _particleFields = 4;
+    const _bounds = {
+      x: undefined,
+      y: undefined
+    };
+    const _particlesNumber = 6000;
+    const _particleFields = 6; // <--- number of properties used to identify each particle, 4 regarding it's location and speed and two regarding any target it might be moving towards
 
     const _particleArrayTotalSize = _particlesNumber * _particleFields;
 
     const _particles = new Float32Array(_particleArrayTotalSize);
 
-    const _speedMultiplier = 0.96;
-    const _gridShrinkFactor = 150;
+    const _speedMultiplier = 0.94;
+    const _gridShrinkFactor = 200;
     const _zComponentShrink = 4000;
     const _perlin = Perlin3D;
+    const _formationHampering = 0.01;
     const random = Math.random;
     const PI2 = Math.PI * 2;
     const SIN = Math.sin;
     const COS = Math.cos;
     const NOW = Date.now;
 
-    for (let i = 0; i < _particlesNumber; i++) {
-      _particleArrayPointer = _particleArrayPointer + _particleFields;
-      _particles[_particleArrayPointer] = random() * w;
-      _particles[_particleArrayPointer + 1] = random() * h;
-      _particles[_particleArrayPointer + 2] = 1;
-      _particles[_particleArrayPointer + 3] = 1;
+    function init(worldWidth, worldHeight) {
+      updateBounds(worldWidth, worldHeight);
+
+      for (let i = 0; i < _particleArrayTotalSize; i += _particleFields) {
+        _particles[i] = random() * _bounds.x;
+        _particles[i + 1] = random() * _bounds.y;
+        _particles[i + 2] = 0;
+        _particles[i + 3] = 0;
+        _particles[i + 4] = -1;
+        _particles[i + 5] = -1;
+      }
     }
 
-    function animateParticles() {
-      $.fillStyle = 'rgb(255, 255, 255)';
+    function initFormation(imageData) {
+      const data = imageData.data;
+
+      for (let i = 0, pixelIndex = undefined, n = 0; i < data.length; i++) {
+        if (data[i] > 0 && (i - 3) % 4 === 0) {
+          pixelIndex = (i - 3) / 4;
+          _particles[_particleFields * n + 4] = pixelIndex % imageData.width;
+          _particles[_particleFields * n++ + 5] = pixelIndex / imageData.width;
+        }
+      }
+    }
+
+    function endFormation() {
+      for (let i = 0; i < _particleArrayTotalSize; i += _particleFields) {
+        _particles[i + 4] = -1;
+        _particles[i + 5] = -1;
+      }
+    }
+
+    function updateBounds(worldWidth, worldHeight) {
+      _bounds.x = worldWidth;
+      _bounds.y = worldHeight;
+    }
+
+    function animateParticles(context) {
+      //draw background
+      context.fillStyle = "rgb(0, 0, 0)";
+      context.fillRect(0, 0, _bounds.x, _bounds.y);
+      context.fillStyle = 'rgb(255, 255, 255)';
 
       for (let i = 0; i < _particleArrayTotalSize; i += _particleFields) {
         //change velocity components based on noise
         _particles[i + 2] += random() / 4 * COS(random() * PI2) + _perlin.noise(_particles[i] / _gridShrinkFactor, _particles[i + 1] / _gridShrinkFactor, -NOW() / _zComponentShrink);
-        _particles[i + 3] += random() / 4 * SIN(random() * PI2) + _perlin.noise(_particles[i] / _gridShrinkFactor, _particles[i + 1] / _gridShrinkFactor, NOW() / _zComponentShrink); //slow the particles and move them around
+        _particles[i + 3] += random() / 4 * SIN(random() * PI2) + _perlin.noise(_particles[i] / _gridShrinkFactor, _particles[i + 1] / _gridShrinkFactor, NOW() / _zComponentShrink);
+
+        if (_particles[i + 4] > 0 && _particles[i + 5] > 0) {
+          _particles[i + 2] += (_particles[i + 4] - _particles[i]) * _formationHampering;
+          _particles[i + 3] += (_particles[i + 5] - _particles[i + 1]) * _formationHampering;
+        } //slow the current particle and move it around
+
 
         _x = _particles[i] += _particles[i + 2] *= _speedMultiplier;
-        _y = _particles[i + 1] += _particles[i + 3] *= _speedMultiplier; //wrap particles around edges
+        _y = _particles[i + 1] += _particles[i + 3] *= _speedMultiplier;
 
-        if (_x > w) {
-          _particles[i] = 0;
-        } else if (_x < 0) {
-          _particles[i] = w;
-        }
+        if (_particles[i + 4] < 0 && _particles[i + 5] < 0) {
+          //wrap particles around edges
+          if (_x > _bounds.x) {
+            _particles[i] = 0;
+          } else if (_x < 0) {
+            _particles[i] = _bounds.x;
+          }
 
-        if (_y > h) {
-          _particles[i + 1] = 0;
-        } else if (_y < 0) {
-          _particles[i + 1] = h;
+          if (_y > _bounds.y) {
+            _particles[i + 1] = 0;
+          } else if (_y < 0) {
+            _particles[i + 1] = _bounds.y;
+          }
         } //draw particles
 
 
-        $.fillRect(_x, _y, 1, 1);
+        context.fillRect(_x, _y, 1, 1);
       }
     }
 
     return {
-      animateParticles
+      init,
+      animateParticles,
+      initFormation,
+      endFormation,
+      updateBounds
     };
-  }(w, h);
+  }(); //set-up
 
-  (function awesome(W, H) {
-    //draw background
-    $.fillStyle = "rgb(0, 0, 0)";
-    $.fillRect(0, 0, W, H); //do the thing...
 
-    particles.animateParticles(); //repeat
+  const canvas = document.getElementsByTagName('canvas')[0];
+  const $ = canvas.getContext('2d');
+  const mCanvas = document.createElement('canvas');
+  const m$ = mCanvas.getContext('2d');
+  const w = mCanvas.width = canvas.width = window.innerWidth;
+  const h = mCanvas.height = canvas.height = window.innerHeight;
+  m$.font = "130px sans-serif";
+  m$.textAlign = "center";
+  particles.init(w, h);
 
-    window.requestAnimationFrame(awesome.bind(this, W, H));
-  })(w, h); //kick off awesomeness
+  (function awesome() {
+    //do the thing...
+    particles.animateParticles($); //repeat
 
+    window.requestAnimationFrame(awesome);
+  })(); //kick off awesomeness
+
+
+  window.setTimeout(function () {
+    m$.fillText("Hi!", m$.canvas.width / 2, m$.canvas.height / 2);
+    particles.initFormation(m$.getImageData(0, 0, m$.canvas.width, m$.canvas.height));
+    document.addEventListener('mousedown', particles.endFormation);
+  }, 2500);
 })(window);
