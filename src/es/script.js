@@ -238,6 +238,7 @@
 
   m$.font="100px sans-serif";
   m$.textAlign = "center";
+  m$.textBaseline= "middle";
 
   particles.init(width, height);
 
@@ -276,6 +277,7 @@
 
     m$.font="100px sans-serif";
     m$.textAlign = "center";
+    m$.textBaseline= "middle";
 
   });
 

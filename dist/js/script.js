@@ -230,6 +230,7 @@
   let height = mCanvas.height = canvas.height = window.innerHeight;
   m$.font = "100px sans-serif";
   m$.textAlign = "center";
+  m$.textBaseline = "middle";
   particles.init(width, height); //Fell free to fork this pen and add anything you'd like to the array!
 
   const greetings = ['hello', 'ciao', 'bonjour', 'hola', 'हेलो', '你好', 'こんにちは'];
@@ -262,6 +263,7 @@
     if (particles.areInFormation()) particles.endFormation();
     m$.font = "100px sans-serif";
     m$.textAlign = "center";
+    m$.textBaseline = "middle";
   });
   window.setTimeout(write, 2000, 'Hello');
 
