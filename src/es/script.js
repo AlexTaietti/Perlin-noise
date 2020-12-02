@@ -1,5 +1,13 @@
 (function(universe){
 
+  ///////////////////////////////////////////////////////////////////////////////
+  // HEAVILY INSPIRED BY: https://codepen.io/ImagineProgramming/full/LpOJzM    //
+  //                                                                           //
+  // HERE ARE SOME TRULY AMAZING RESOURCES I USED TO LEARN ABOUT PERLIN NOISE: //
+  // https://www.scratchapixel.com/                                            //
+  // http://staffwww.itn.liu.se/~stegu/simplexnoise/simplexnoise.pdf           //
+  ///////////////////////////////////////////////////////////////////////////////
+
   function perlinSmooth (t) { return t*t*t*(10+(6*t-15)*t); }
 
   function lerp (t, v0, v1){ return v0 * (1 - t) + v1 * t; }
@@ -14,22 +22,6 @@
     }
 
     dot(x, y, z){ return this.x * x + this.y * y + this.z * z; }
-
-    add (other){
-      this.x += other.x;
-      this.y += other.y;
-      this.z += other.z;
-      return this;
-    }
-
-    mul (scalar) {
-      this.x *= scalar;
-      this.y *= scalar;
-      this.z *= scalar;
-      return this;
-    }
-
-    clone () { return new Vec3D(this.x, this.y, this.z); }
 
   }
 
@@ -52,18 +44,22 @@
 
     function noise(x, y, z){
 
+      //find the location of the cube the point we are considering sits in, in our imaginary lattice
       let X = Math.floor(x);
       let Y = Math.floor(y);
       let Z = Math.floor(z);
 
+      //find the components of the vector that describes the location of the cube within said lattice
       const tx = x - X;
       const ty = y - Y;
       const tz = z - Z;
 
+      //wrap the coordinates of the cube if needed (just in case we are outside of the noise function's domain)
       X = X & 255;
       Y = Y & 255;
       Z = Z & 255;
 
+      //find the index of a random gradient using an hash table
       const gradientIndex000 = _permutationTable[X + _permutationTable[Y + _permutationTable[Z]]] % _gradients.length;
       const gradientIndex001 = _permutationTable[X + _permutationTable[Y + _permutationTable[Z + 1]]] % _gradients.length;
       const gradientIndex010 = _permutationTable[X + _permutationTable[Y + 1 + _permutationTable[Z]]] % _gradients.length;
@@ -73,28 +69,31 @@
       const gradientIndex110 = _permutationTable[X + 1 + _permutationTable[Y + 1 + _permutationTable[Z]]] % _gradients.length;
       const gradientIndex111 = _permutationTable[X + 1 + _permutationTable[Y + 1 + _permutationTable[Z + 1]]] % _gradients.length;
 
-      const gradient000 = _gradients[gradientIndex000].dot(tx, ty, tz);
-      const gradient100 = _gradients[gradientIndex100].dot(tx - 1, ty, tz);
-      const gradient010 = _gradients[gradientIndex010].dot(tx, ty - 1, tz);
-      const gradient110 = _gradients[gradientIndex110].dot(tx - 1, ty - 1, tz);
-      const gradient001 = _gradients[gradientIndex001].dot(tx, ty, tz - 1);
-      const gradient101 = _gradients[gradientIndex101].dot(tx - 1, ty, tz - 1);
-      const gradient011 = _gradients[gradientIndex011].dot(tx, ty - 1, tz - 1);
-      const gradient111 = _gradients[gradientIndex111].dot(tx - 1, ty - 1, tz - 1);
+      //find the dot product between the gradients we just found and the initial point's relative position vector
+      const dot000 = _gradients[gradientIndex000].dot(tx, ty, tz);
+      const dot100 = _gradients[gradientIndex100].dot(tx - 1, ty, tz);
+      const dot010 = _gradients[gradientIndex010].dot(tx, ty - 1, tz);
+      const dot110 = _gradients[gradientIndex110].dot(tx - 1, ty - 1, tz);
+      const dot001 = _gradients[gradientIndex001].dot(tx, ty, tz - 1);
+      const dot101 = _gradients[gradientIndex101].dot(tx - 1, ty, tz - 1);
+      const dot011 = _gradients[gradientIndex011].dot(tx, ty - 1, tz - 1);
+      const dot111 = _gradients[gradientIndex111].dot(tx - 1, ty - 1, tz - 1);
 
+      //remap the point's relative position vector's components using Perlin's fave polynomial function
       const smoothX = perlinSmooth(tx);
       const smoothY = perlinSmooth(ty);
       const smoothZ = perlinSmooth(tz);
 
-      const interpolX00 = lerp(smoothX, gradient000, gradient100);
-      const interpolX01 = lerp(smoothX, gradient001, gradient101);
-      const interpolX10 = lerp(smoothX, gradient010, gradient110);
-      const interpolX11 = lerp(smoothX, gradient011, gradient111);
+      //start interpolating, one axis at a time
+      const interpolX00 = lerp(smoothX, dot000, dot100);
+      const interpolX01 = lerp(smoothX, dot001, dot101);
+      const interpolX10 = lerp(smoothX, dot010, dot110);
+      const interpolX11 = lerp(smoothX, dot011, dot111);
 
       const interpolXY0 = lerp(smoothY, interpolX00, interpolX10);
       const interpolXY1 = lerp(smoothY, interpolX01, interpolX11);
 
-      const noise = lerp(smoothZ, interpolXY0, interpolXY1);
+      const noise = lerp(smoothZ, interpolXY0, interpolXY1); //make some noise
 
       return noise;
 
@@ -107,14 +106,14 @@
   const particles = (function () {
 
     //private variables
-    let _x, _y;
+    let _x, _y, _inFormation = false;
 
     const _bounds = { x: undefined, y: undefined };
-    const _particlesNumber = 6000;
+    const _particlesNumber = 10000;
     const _particleFields = 6; // <--- number of properties used to identify each particle, 4 regarding it's location and speed and two regarding any target it might be moving towards
     const _particleArrayTotalSize = _particlesNumber * _particleFields;
     const _particles = new Float32Array(_particleArrayTotalSize);
-    const _speedMultiplier = 0.94;
+    const _speedMultiplier = 0.9;
     const _gridShrinkFactor = 200;
     const _zComponentShrink = 4000;
     const _perlin = Perlin3D;
@@ -147,22 +146,29 @@
 
       const data = imageData.data;
 
-      for(let i=0, pixelIndex = undefined, n=0; i < data.length; i++){
+      for(let i=0, particleArrayPointer = ~~(random() * _particlesNumber), pixelIndex = undefined; i < data.length; i++){
         if(data[i] > 0 && (i - 3) % 4 === 0){
           pixelIndex = (i - 3) / 4;
-          _particles[_particleFields * n + 4] = pixelIndex % imageData.width;
-          _particles[_particleFields * (n++) + 5] = pixelIndex / imageData.width;
+          _particles[_particleFields * (particleArrayPointer % _particlesNumber) + 4] = pixelIndex % imageData.width;
+          _particles[_particleFields * ((particleArrayPointer++) % _particlesNumber) + 5] = pixelIndex / imageData.width;
         }
       }
+
+      _inFormation = true;
 
     }
 
     function endFormation () {
+
       for (let i = 0; i < _particleArrayTotalSize; i+=_particleFields) {
         _particles[i + 4] = -1;
         _particles[i + 5] = -1;
       }
+      _inFormation = false;
+
     }
+
+    function areInFormation () { return _inFormation; }
 
     function updateBounds (worldWidth, worldHeight) {
       _bounds.x = worldWidth;
@@ -183,6 +189,7 @@
         _particles[i + 2] += ( (random()/4) * COS(random()*(PI2)) + _perlin.noise(_particles[i]/_gridShrinkFactor, _particles[i + 1]/_gridShrinkFactor, -NOW()/_zComponentShrink) );
         _particles[i + 3] += ( (random()/4) * SIN(random()*(PI2)) + _perlin.noise(_particles[i]/_gridShrinkFactor, _particles[i + 1]/_gridShrinkFactor, NOW()/_zComponentShrink) );
 
+        //approach coordinates of target pixel if one has been assigned to this specific particle
         if(_particles[i + 4] > 0 && _particles[i + 5] > 0){
           _particles[i + 2] += ((_particles[i + 4] - _particles[i]) * _formationHampering);
           _particles[i + 3] += ((_particles[i + 5] - _particles[i + 1]) * _formationHampering);
@@ -192,8 +199,8 @@
         _x = _particles[i]     += (_particles[i + 2] *= _speedMultiplier);
         _y = _particles[i + 1] += (_particles[i + 3] *= _speedMultiplier);
 
+        //wrap particles around edges only if they have not been assigned a target pixel
         if(_particles[i + 4] < 0 && _particles[i + 5] < 0){
-          //wrap particles around edges
           if (_x > _bounds.x) {
             _particles[i] = 0;
           } else if(_x < 0){
@@ -214,7 +221,7 @@
 
     }
 
-    return { init, animateParticles, initFormation, endFormation, updateBounds };
+    return { init, animateParticles, initFormation, endFormation, updateBounds, areInFormation };
 
   })();
 
@@ -226,13 +233,53 @@
   const mCanvas = document.createElement('canvas');
   const m$ = mCanvas.getContext('2d');
 
-  const w = mCanvas.width = canvas.width = window.innerWidth;
-  const h = mCanvas.height = canvas.height = window.innerHeight;
+  let width = mCanvas.width = canvas.width = window.innerWidth;
+  let height = mCanvas.height = canvas.height = window.innerHeight;
 
-  m$.font="130px sans-serif";
+  m$.font="100px sans-serif";
   m$.textAlign = "center";
 
-  particles.init(w, h);
+  particles.init(width, height);
+
+  //Fell free to fork this pen and add anything you'd like to the array!
+  const greetings = ['hello', 'ciao', 'bonjour', 'hola', 'हेलो', '你好', 'こんにちは'];
+
+  function write (string){
+    m$.fillText(string, width/2, height/2);
+    particles.initFormation(m$.getImageData(0, 0, width, height));
+  }
+
+  function reset(){
+    particles.endFormation();
+    m$.clearRect(0, 0, width, height);
+  }
+
+  function pickRandom (choises) { return choises[~~(Math.random() * choises.length)]; }
+
+  document.addEventListener('click', function () {
+
+    if(!particles.areInFormation()){
+      write(pickRandom(greetings));
+    } else {
+      reset();
+    }
+
+  });
+
+  window.addEventListener('resize', function () {
+
+    width  = mCanvas.width  = canvas.width  = window.innerWidth;
+    height = mCanvas.height = canvas.height = window.innerHeight;
+
+    particles.updateBounds(width, height);
+    if(particles.areInFormation()) particles.endFormation();
+
+    m$.font="100px sans-serif";
+    m$.textAlign = "center";
+
+  });
+
+  window.setTimeout(write, 2000, 'Hello');
 
   (function awesome () {
 
@@ -243,15 +290,6 @@
     window.requestAnimationFrame(awesome);
 
   })(); //kick off awesomeness
-
-  window.setTimeout(function(){
-
-    m$.fillText("Hi!", m$.canvas.width/2, m$.canvas.height/2);
-    particles.initFormation(m$.getImageData(0, 0, m$.canvas.width, m$.canvas.height));
-
-    document.addEventListener('mousedown', particles.endFormation);
-
-  }, 2500);
 
 
 })(window);
