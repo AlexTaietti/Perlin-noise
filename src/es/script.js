@@ -109,15 +109,15 @@
     let _x, _y, _inFormation = false;
 
     const _bounds = { x: undefined, y: undefined };
-    const _particlesNumber = 10000;
+    const _particlesNumber = 8000;
     const _particleFields = 6; // <--- number of properties used to identify each particle, 4 regarding it's location and speed and two regarding any target it might be moving towards
     const _particleArrayTotalSize = _particlesNumber * _particleFields;
     const _particles = new Float32Array(_particleArrayTotalSize);
-    const _speedMultiplier = 0.9;
-    const _gridShrinkFactor = 200;
+    const _speedMultiplier = 0.97;
+    const _gridShrinkFactor = 190;
     const _zComponentShrink = 4000;
     const _perlin = Perlin3D;
-    const _formationHampering = 0.01;
+    const _formationHampering = 0.015;
 
     const random = Math.random;
     const PI2 = Math.PI * 2;
