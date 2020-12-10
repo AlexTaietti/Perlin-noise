@@ -117,7 +117,8 @@
     const _gridShrinkFactor = 190;
     const _zComponentShrink = 4000;
     const _perlin = Perlin3D;
-    const _formationHampering = 0.015;
+    const _formationHampering = 0.013;
+    const _shapeSharpness = 30;
 
     const random = Math.random;
     const PI2 = Math.PI * 2;
@@ -183,16 +184,18 @@
 
       context.fillStyle = 'rgb(255, 255, 255)';
 
-      for (let i = 0; i < _particleArrayTotalSize; i += _particleFields) {
+      for (let i = 0, noiseX, noiseY; i < _particleArrayTotalSize; i += _particleFields) {
 
-        //change velocity components based on noise
-        _particles[i + 2] += ( (random()/4) * COS(random()*(PI2)) + _perlin.noise(_particles[i]/_gridShrinkFactor, _particles[i + 1]/_gridShrinkFactor, -NOW()/_zComponentShrink) );
-        _particles[i + 3] += ( (random()/4) * SIN(random()*(PI2)) + _perlin.noise(_particles[i]/_gridShrinkFactor, _particles[i + 1]/_gridShrinkFactor, NOW()/_zComponentShrink) );
+        noiseX = _perlin.noise(_particles[i]/_gridShrinkFactor, _particles[i + 1]/_gridShrinkFactor, -NOW()/_zComponentShrink);
+        noiseY = _perlin.noise(_particles[i]/_gridShrinkFactor, _particles[i + 1]/_gridShrinkFactor, NOW()/_zComponentShrink);
 
         //approach coordinates of target pixel if one has been assigned to this specific particle
         if(_particles[i + 4] > 0 && _particles[i + 5] > 0){
-          _particles[i + 2] += ((_particles[i + 4] - _particles[i]) * _formationHampering);
-          _particles[i + 3] += ((_particles[i + 5] - _particles[i + 1]) * _formationHampering);
+          _particles[i + 2] += ((_particles[i + 4] - _particles[i]) * _formationHampering) + ( (random()/_shapeSharpness) * COS(random()*(PI2)) + noiseX );
+          _particles[i + 3] += ((_particles[i + 5] - _particles[i + 1]) * _formationHampering) + ( (random()/_shapeSharpness) * SIN(random()*(PI2)) + noiseY );
+        } else { //simply change velocity components based on noise
+          _particles[i + 2] += ( (random()/4) * COS(random()*(PI2)) + noiseX );
+          _particles[i + 3] += ( (random()/4) * SIN(random()*(PI2)) + noiseY );
         }
 
         //slow the current particle and move it around
@@ -243,7 +246,7 @@
   particles.init(width, height);
 
   //Fell free to fork this pen and add anything you'd like to the array!
-  const greetings = ['hello', 'ciao', 'bonjour', 'hola', 'हेलो', '你好', 'こんにちは'];
+  const greetings = ['hello', 'ciao', 'salut', 'hola', 'हेलो', '你好', '今日は'];
 
   function write (string){
     m$.fillText(string, width/2, height/2);
