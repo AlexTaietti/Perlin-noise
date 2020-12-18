@@ -43,7 +43,7 @@
       //find the location of the cube the point we are considering sits in, in our imaginary lattice
       let X = Math.floor(x);
       let Y = Math.floor(y);
-      let Z = Math.floor(z); //find the components of the vector that describes the location of the cube within said lattice
+      let Z = Math.floor(z); //find the components of the vector describing the relative location of the point within the cube
 
       const tx = x - X;
       const ty = y - Y;
