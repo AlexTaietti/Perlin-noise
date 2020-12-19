@@ -178,6 +178,9 @@
 
     function animateParticles(context) {
 
+      //clear canvas
+      context.clearRect(0, 0, _bounds.x, _bounds.y);
+
       //draw background
       context.fillStyle = "rgb(0, 0, 0)";
       context.fillRect(0, 0, _bounds.x, _bounds.y);
