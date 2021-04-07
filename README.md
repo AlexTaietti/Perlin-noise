@@ -8,4 +8,4 @@ As a bonus here are some truly outstanding free resources I used to learn more a
 
 ---
 
-Here's a live [demo](https://github.com/AlexTaietti/Perlin-noise) 🚀
+Here's a live [demo](https://codepen.io/AlexTaietti/full/NWRjavO) 🚀
