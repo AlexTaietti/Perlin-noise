@@ -103,8 +103,10 @@
     //private variables
     let _x,
         _y,
+        _hue = 0,
         _inFormation = false;
 
+    let _RAINBOW = false;
     const _bounds = {
       x: undefined,
       y: undefined
@@ -116,19 +118,21 @@
 
     const _particles = new Float32Array(_particleArrayTotalSize);
 
-    const _speedMultiplier = 0.97;
+    const _speedMultiplier = 0.953;
     const _gridShrinkFactor = 190;
     const _zComponentShrink = 4000;
     const _perlin = Perlin3D;
-    const _formationHampering = 0.013;
-    const _shapeSharpness = 30;
+    const _formationHampering = 0.0089;
+    const _shapeSharpness = 19.8;
+    const _formationNoiseIntensity = 1;
+    const _noiseIntensity = 0.8;
     const random = Math.random;
     const PI2 = Math.PI * 2;
     const SIN = Math.sin;
     const COS = Math.cos;
     const NOW = Date.now;
 
-    function init(worldWidth, worldHeight) {
+    function init(worldWidth, worldHeight, rainbowMode = false) {
       updateBounds(worldWidth, worldHeight);
 
       for (let i = 0; i < _particleArrayTotalSize; i += _particleFields) {
@@ -139,6 +143,8 @@
         _particles[i + 4] = -1;
         _particles[i + 5] = -1;
       }
+
+      if (rainbowMode) _RAINBOW = true;
     }
 
     function initFormation(imageData) {
@@ -177,21 +183,21 @@
       //clear canvas
       context.clearRect(0, 0, _bounds.x, _bounds.y); //draw background
 
-      context.fillStyle = "rgb(0, 0, 0)";
+      context.fillStyle = `hsl(0, 100%, 0%)`;
       context.fillRect(0, 0, _bounds.x, _bounds.y);
-      context.fillStyle = 'rgb(255, 255, 255)';
+      context.fillStyle = _RAINBOW ? `hsl(${_hue += .4}, 100%, 50%)` : `hsl(0, 100%, 50%)`;
 
       for (let i = 0, noiseX, noiseY; i < _particleArrayTotalSize; i += _particleFields) {
         noiseX = _perlin.noise(_particles[i] / _gridShrinkFactor, _particles[i + 1] / _gridShrinkFactor, -NOW() / _zComponentShrink);
         noiseY = _perlin.noise(_particles[i] / _gridShrinkFactor, _particles[i + 1] / _gridShrinkFactor, NOW() / _zComponentShrink); //approach coordinates of target pixel if one has been assigned to this specific particle
 
         if (_particles[i + 4] > 0 && _particles[i + 5] > 0) {
-          _particles[i + 2] += (_particles[i + 4] - _particles[i]) * _formationHampering + (random() / _shapeSharpness * COS(random() * PI2) + noiseX);
-          _particles[i + 3] += (_particles[i + 5] - _particles[i + 1]) * _formationHampering + (random() / _shapeSharpness * SIN(random() * PI2) + noiseY);
+          _particles[i + 2] += (_particles[i + 4] - _particles[i]) * _formationHampering + (random() / _shapeSharpness * COS(random() * PI2) + noiseX * _formationNoiseIntensity);
+          _particles[i + 3] += (_particles[i + 5] - _particles[i + 1]) * _formationHampering + (random() / _shapeSharpness * SIN(random() * PI2) + noiseY * _formationNoiseIntensity);
         } else {
           //simply change velocity components based on noise
-          _particles[i + 2] += random() / 4 * COS(random() * PI2) + noiseX;
-          _particles[i + 3] += random() / 4 * SIN(random() * PI2) + noiseY;
+          _particles[i + 2] += random() / 4 * COS(random() * PI2) + noiseX * _noiseIntensity;
+          _particles[i + 3] += random() / 4 * SIN(random() * PI2) + noiseY * _noiseIntensity;
         } //slow the current particle and move it around
 
 
@@ -237,13 +243,24 @@
   m$.font = "100px sans-serif";
   m$.textAlign = "center";
   m$.textBaseline = "middle";
-  particles.init(width, height); //Fell free to fork this pen and add anything you'd like to the array!
+  particles.init(width, height, true); //Fell free to fork this pen and add anything you'd like to the array!
 
   const greetings = ['hello', 'ciao', 'salut', 'hola', 'हेलो', '你好', '今日は'];
 
   function write(string) {
     m$.fillText(string, width / 2, height / 2);
     particles.initFormation(m$.getImageData(0, 0, width, height));
+  }
+
+  function initialWrite() {
+    write('hello');
+    document.addEventListener('click', function () {
+      if (!particles.areInFormation()) {
+        write(pickRandom(greetings));
+      } else {
+        reset();
+      }
+    });
   }
 
   function reset() {
@@ -255,13 +272,6 @@
     return choises[~~(Math.random() * choises.length)];
   }
 
-  document.addEventListener('click', function () {
-    if (!particles.areInFormation()) {
-      write(pickRandom(greetings));
-    } else {
-      reset();
-    }
-  });
   window.addEventListener('resize', function () {
     width = mCanvas.width = canvas.width = window.innerWidth;
     height = mCanvas.height = canvas.height = window.innerHeight;
@@ -271,7 +281,7 @@
     m$.textAlign = "center";
     m$.textBaseline = "middle";
   });
-  window.setTimeout(write, 2000, 'Hello');
+  window.setTimeout(initialWrite, 2000, 'hello');
 
   (function awesome() {
     //do the thing...
